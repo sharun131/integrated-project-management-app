@@ -31,9 +31,21 @@ const milestoneSchema = new mongoose.Schema(
         // Status Control
         status: {
             type: String,
-            enum: ["NOT_STARTED", "IN_PROGRESS", "BLOCKED", "COMPLETED"],
+            enum: ["NOT_STARTED", "IN_PROGRESS", "PENDING_APPROVAL", "BLOCKED", "COMPLETED"],
             default: "NOT_STARTED",
         },
+
+        // Approval Workflow
+        approvalRequestedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
+        approvalRequestedAt: Date,
+        approvedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
+        approvedAt: Date,
 
         // Assignment & Control
         createdBy: {

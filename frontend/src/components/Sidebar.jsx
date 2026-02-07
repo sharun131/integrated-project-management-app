@@ -40,7 +40,9 @@ const Sidebar = () => {
       <nav className="flex-1 px-4 py-4 space-y-8 overflow-y-auto custom-scrollbar">
         <Section title="Overview" delay="animate-fade-in-up stagger-1">
           <Item to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
-          <Item to="/projects" icon={FolderKanban} label="Projects" />
+          {['Super Admin', 'Project Admin', 'Project Manager'].includes(user?.role) && (
+            <Item to="/projects" icon={FolderKanban} label="Projects" />
+          )}
         </Section>
 
         <Section title="Management" delay="animate-fade-in-up stagger-2">

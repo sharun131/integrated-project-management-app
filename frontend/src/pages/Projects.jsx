@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Search, Calendar, Users, MoreVertical, Briefcase, Clock, CheckCircle, Trash2, UserPlus, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import CreateProjectModal from '../components/CreateProjectModal';
+import ManageProjectModal from '../components/ManageProjectModal';
 import AssignTeamModal from '../components/AssignTeamModal';
 import PageHeader from '../components/PageHeader';
 
@@ -11,6 +11,7 @@ const Projects = () => {
     const navigate = useNavigate();
     const [projects, setProjects] = useState([]);
     const [showModal, setShowModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +36,17 @@ const Projects = () => {
         try {
             await api.delete(`/projects/${id}`);
             fetchProjects();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleArchiveProject = async (id, e) => {
+        e.stopPropagation();
+        try {
+            await api.put(`/projects/${id}`, { status: 'Archived' });
+            fetchProjects();
+            setActiveDropdown(null);
         } catch (err) {
             console.error(err);
         }
@@ -72,8 +84,12 @@ const Projects = () => {
         }
     };
 
-    const canManage = (project) => {
-        return user.role === 'Super Admin' || project.manager?._id === user.id || project.manager === user.id;
+    const canManageNode = () => {
+        return ['Super Admin', 'Project Admin', 'Project Manager'].includes(user.role);
+    };
+
+    const canManageProject = (project) => {
+        return canManageNode() || project.manager?._id === user.id || project.manager === user.id;
     };
 
     return (
@@ -83,13 +99,19 @@ const Projects = () => {
                     title="System Projects"
                     subtitle="Centralized management of your project lifecycle"
                 />
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="btn btn-primary shadow-xl shadow-primary/20 animate-scale-in"
-                >
-                    <Plus size={20} />
-                    <span>New Project</span>
-                </button>
+                {canManageNode() && (
+                    <button
+                        onClick={() => {
+                            setSelectedProject(null);
+                            setIsEditing(false);
+                            setShowModal(true);
+                        }}
+                        className="btn btn-primary shadow-xl shadow-primary/20 animate-scale-in"
+                    >
+                        <Plus size={20} />
+                        <span>New Project</span>
+                    </button>
+                )}
             </div>
 
             {/* Search Bar */}
@@ -124,7 +146,7 @@ const Projects = () => {
                                     </div>
                                 </div>
 
-                                {canManage(project) && (
+                                {canManageProject(project) && (
                                     <div className="relative">
                                         <button
                                             onClick={(e) => {
@@ -149,12 +171,30 @@ const Projects = () => {
                                                         </button>
                                                     )}
                                                     <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedProject(project);
+                                                            setIsEditing(true);
+                                                            setShowModal(true);
+                                                            setActiveDropdown(null);
+                                                        }}
+                                                        className="w-full px-4 py-2.5 text-xs font-bold text-white hover:bg-white/5 flex items-center gap-3 transition-colors"
+                                                    >
+                                                        <Clock size={14} className="text-primary" /> Edit Parameters
+                                                    </button>
+                                                    <button
                                                         onClick={(e) => openAssignModal(project, e)}
                                                         className="w-full px-4 py-2.5 text-xs font-bold text-primary hover:bg-primary/10 flex items-center gap-3 transition-colors"
                                                     >
                                                         <UserPlus size={14} /> Assign Agents
                                                     </button>
                                                     <div className="border-t border-white/5 my-1"></div>
+                                                    <button
+                                                        onClick={(e) => handleArchiveProject(project._id, e)}
+                                                        className="w-full px-4 py-2.5 text-xs font-bold text-amber-500 hover:bg-amber-500/10 flex items-center gap-3 transition-colors"
+                                                    >
+                                                        <Clock size={14} /> Archive Node
+                                                    </button>
                                                     <button
                                                         onClick={(e) => handleDeleteProject(project._id, e)}
                                                         className="w-full px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors"
@@ -179,12 +219,63 @@ const Projects = () => {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                        <AlertCircle size={14} className={`mr-2 ${project.priority === 'Critical' ? 'text-red-500' :
+                                                project.priority === 'High' ? 'text-amber-500' :
+                                                    'text-primary'
+                                            }`} />
+                                        <span>Priority Level</span>
+                                    </div>
+                                    <span className={`text-xs font-bold ${project.priority === 'Critical' ? 'text-red-500' :
+                                            project.priority === 'High' ? 'text-amber-500' :
+                                                'text-white'
+                                        }`}>
+                                        {project.priority || 'Medium'}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center text-[10px] font-black uppercase tracking-wider text-slate-500">
                                         <Calendar size={14} className="mr-2 text-primary" />
                                         <span>Start Date</span>
                                     </div>
                                     <span className="text-xs font-bold text-white">
                                         {project.startDate ? new Date(project.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}
                                     </span>
+                                </div>
+
+                                <div className="space-y-3 pt-4 border-t border-white/5">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Assigned Personnel</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {/* Manager */}
+                                        <div className="group/avatar relative" title={`Manager: ${project.manager?.name}`}>
+                                            <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-[10px] font-black text-primary group-hover/avatar:bg-primary group-hover/avatar:text-white transition-all cursor-help">
+                                                {project.manager?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'M'}
+                                            </div>
+                                        </div>
+
+                                        {/* Team Members */}
+                                        {project.team && project.team.length > 0 ? (
+                                            project.team.slice(0, 3).map((member, i) => (
+                                                <div key={i} className="group/avatar relative" title={`Team Member: ${member.user?.name || 'Unknown'}`}>
+                                                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover/avatar:bg-white/10 group-hover/avatar:text-white transition-all cursor-help">
+                                                        {member.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : null}
+
+                                        {project.team && project.team.length > 3 && (
+                                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-black text-slate-500">
+                                                +{project.team.length - 3}
+                                            </div>
+                                        )}
+
+                                        {!project.team || project.team.length === 0 && (
+                                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 bg-white/5 px-2 py-1 rounded-md border border-white/5 italic">
+                                                Solo Mission
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -222,10 +313,11 @@ const Projects = () => {
 
             {/* Modals */}
             {showModal && (
-                <CreateProjectModal
+                <ManageProjectModal
                     isOpen={showModal}
+                    project={selectedProject}
                     onClose={() => setShowModal(false)}
-                    onProjectCreated={() => {
+                    onProjectUpdated={() => {
                         setShowModal(false);
                         fetchProjects();
                     }}

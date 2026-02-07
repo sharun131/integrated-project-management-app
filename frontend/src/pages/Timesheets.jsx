@@ -23,13 +23,13 @@ const Timesheets = () => {
   };
 
   const filteredTimesheets = timesheets.filter(ts =>
-    ts.taskId?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ts.task?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ts.project?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getTotalHours = () => {
     return filteredTimesheets.reduce(
-      (sum, ts) => sum + (ts.hoursLogged || 0),
+      (sum, ts) => sum + (ts.hours || 0),
       0
     );
   };
@@ -39,7 +39,7 @@ const Timesheets = () => {
       {/* ================= Header ================= */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 animate-fade-in-up">
         <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Chronos Journal</h1>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">Operational Logs</h1>
           <p className="text-slate-500 font-medium mt-2 italic">
             Precision time allocation and operational logging
           </p>
@@ -110,7 +110,7 @@ const Timesheets = () => {
                   </td>
 
                   <td className="px-6 py-5">
-                    <span className="text-slate-400 font-medium italic">{ts.taskId?.title || '—'}</span>
+                    <span className="text-slate-400 font-medium italic">{ts.task?.title || '—'}</span>
                   </td>
 
                   <td className="px-6 py-5">
@@ -122,7 +122,7 @@ const Timesheets = () => {
 
                   <td className="px-6 py-5">
                     <span className="px-3 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">
-                      {ts.hoursLogged || 0} HOURS
+                      {ts.hours || 0} HOURS
                     </span>
                   </td>
 

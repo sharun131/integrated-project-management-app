@@ -6,10 +6,12 @@ const {
     updateMilestone,
     deleteMilestone,
     createPhase,
-    getPhases
+    getPhases,
+    requestMilestoneApproval,
+    reviewMilestone
 } = require('../controllers/milestoneController');
 
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -28,10 +30,15 @@ router
     .route('/:milestoneId/phases')
     .get(getPhases);
 
-router
-    .route('/:id')
-    .get(getMilestone)
-    .put(updateMilestone)
-    .delete(deleteMilestone);
+router.route('/:id')
+    .get(protect, getMilestone)
+    .put(protect, authorize('Super Admin', 'Project App-Admin', 'Project Admin', 'Project Manager', 'Team Lead'), updateMilestone)
+    .delete(protect, authorize('Super Admin', 'Project App-Admin', 'Project Admin', 'Project Manager'), deleteMilestone);
+
+router.route('/:id/request-approval')
+    .put(protect, requestMilestoneApproval);
+
+router.route('/:id/review')
+    .put(protect, authorize('Super Admin', 'Project App-Admin', 'Project Admin', 'Project Manager'), reviewMilestone);
 
 module.exports = router;

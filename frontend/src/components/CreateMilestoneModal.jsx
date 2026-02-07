@@ -8,6 +8,11 @@ const CreateMilestoneModal = ({ isOpen, onClose, onMilestoneCreated }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [formData, setFormData] = useState({
+        name: '',
+        project: '',
+        dueDate: ''
+    });
 
     // Fetch projects for the dropdown
     useEffect(() => {

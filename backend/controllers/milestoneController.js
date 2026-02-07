@@ -27,6 +27,12 @@ exports.createMilestone = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Not authorized to create milestone in this project' });
         }
 
+        // Limit to max 5 milestones per project
+        const milestoneCount = await Milestone.countDocuments({ project, isDeleted: false });
+        if (milestoneCount >= 5) {
+            return res.status(400).json({ success: false, error: 'Maximum limit of 5 milestones per project reached.' });
+        }
+
         const milestone = await Milestone.create({
             name,
             description,
@@ -185,6 +191,79 @@ exports.getPhases = async (req, res) => {
             success: true,
             count: phases.length,
             data: phases
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+};
+// @desc    Request Milestone Approval
+// @route   PUT /api/milestones/:id/request-approval
+// @access  Private (Team Lead/Member)
+exports.requestMilestoneApproval = async (req, res) => {
+    try {
+        const milestone = await Milestone.findById(req.params.id);
+
+        if (!milestone) {
+            return res.status(404).json({ success: false, error: 'Milestone not found' });
+        }
+
+        if (milestone.status !== 'IN_PROGRESS' && milestone.status !== 'NOT_STARTED') {
+            return res.status(400).json({ success: false, error: 'Milestone must be active to request approval' });
+        }
+
+        milestone.status = 'PENDING_APPROVAL';
+        milestone.approvalRequestedBy = req.user.id;
+        milestone.approvalRequestedAt = Date.now();
+        await milestone.save();
+
+        res.status(200).json({
+            success: true,
+            data: milestone
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+};
+
+// @desc    Review Milestone (Approve/Reject)
+// @route   PUT /api/milestones/:id/review
+// @access  Private (Admin/Manager)
+exports.reviewMilestone = async (req, res) => {
+    try {
+        const { action } = req.body; // 'APPROVE' or 'REJECT'
+        const milestone = await Milestone.findById(req.params.id);
+
+        if (!milestone) {
+            return res.status(404).json({ success: false, error: 'Milestone not found' });
+        }
+
+        // RBAC: Only Admin or Project Manager
+        const isAuthorized = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        if (!isAuthorized) {
+            return res.status(403).json({ success: false, error: 'Not authorized to review milestones' });
+        }
+
+        if (action === 'APPROVE') {
+            milestone.status = 'COMPLETED';
+            milestone.approvedBy = req.user.id;
+            milestone.approvedAt = Date.now();
+            milestone.progress = 100; // Auto-complete
+        } else if (action === 'REJECT') {
+            milestone.status = 'IN_PROGRESS';
+            milestone.approvalRequestedBy = undefined;
+            milestone.approvalRequestedAt = undefined;
+        } else {
+            return res.status(400).json({ success: false, error: 'Invalid action' });
+        }
+
+        await milestone.save();
+
+        res.status(200).json({
+            success: true,
+            data: milestone
         });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });

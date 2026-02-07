@@ -51,8 +51,9 @@ exports.login = async (req, res) => {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
 
-        // Update last login
+        // Update last login and start session
         user.lastLogin = Date.now();
+        user.currentSessionStart = Date.now();
         await user.save();
 
         sendTokenResponse(user, 200, res);
@@ -85,6 +86,63 @@ exports.getUsers = async (req, res) => {
         });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });
+    }
+};
+
+// @desc    Logout user / Clear cookie
+// @route   POST /api/auth/logout
+// @access  Private
+exports.logout = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (user && user.currentSessionStart) {
+            const now = Date.now();
+            const sessionStart = new Date(user.currentSessionStart).getTime();
+            const durationMs = now - sessionStart;
+            const durationHours = durationMs / (1000 * 60 * 60);
+
+            // Only log if duration is significant (> 1 minute)
+            if (durationHours > 0.016) {
+                // Find a default project to log against (e.g., first active project)
+                // In a real app, user might select project on logout or tracking
+                const Timesheet = require('../models/Timesheet');
+                const Project = require('../models/Project'); // Ensure Project model is imported if needed
+
+                // Find a project the user is assigned to
+                const project = await Project.findOne({
+                    team: { $elemMatch: { user: user._id } },
+                    status: { $ne: 'Completed' }
+                });
+
+                if (project) {
+                    await Timesheet.create({
+                        user: user._id,
+                        project: project._id,
+                        date: now,
+                        hours: parseFloat(durationHours.toFixed(2)),
+                        description: 'Automated Session Log',
+                        status: 'Pending'
+                    });
+                }
+            }
+
+            user.currentSessionStart = null;
+            await user.save();
+        }
+
+        res.cookie('token', 'none', {
+            expires: new Date(Date.now() + 10 * 1000),
+            httpOnly: true
+        });
+
+        res.status(200).json({
+            success: true,
+            data: {}
+        });
+    } catch (err) {
+        console.error("Logout Error:", err);
+        res.status(500).json({ success: false, error: 'Server Error during logout' });
     }
 };
 

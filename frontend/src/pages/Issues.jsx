@@ -183,13 +183,15 @@ const Issues = () => {
                   {issue.status}
                 </span>
 
-                <button
-                  onClick={() => handleDeleteIssue(issue._id)}
-                  className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                  title="Delete Project Signal"
-                >
-                  <Trash2 size={16} />
-                </button>
+                {!['Super Admin', 'Project Admin'].includes(user?.role) && (
+                  <button
+                    onClick={() => handleDeleteIssue(issue._id)}
+                    className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    title="Delete Project Signal"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))}

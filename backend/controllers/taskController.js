@@ -6,7 +6,16 @@ const Project = require('../models/Project');
 // @access  Private
 exports.createTask = async (req, res) => {
     try {
-        const { title, description, project, assignedTo, priority, dueDate, estimatedHours } = req.body;
+        const { title, description, project, assignedTo, priority, dueDate, estimatedHours, subtasks, dependencies } = req.body;
+
+        // RBAC: Only Admin and Manager/PM can create tasks
+        const isAdminOrManager = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        if (!isAdminOrManager) {
+            return res.status(403).json({ success: false, error: 'Authorization failure: Only administrative personnel can initialize task nodes.' });
+        }
 
         // Verify Project Exists
         const projectExists = await Project.findById(project);
@@ -19,10 +28,12 @@ exports.createTask = async (req, res) => {
             title,
             description,
             project,
-            assignedTo: assignedTo || req.user.id, // Default to self if not provided
+            assignedTo: assignedTo || req.user.id,
             priority,
             dueDate,
             estimatedHours,
+            subtasks: subtasks || [],
+            dependencies: dependencies || [],
             createdBy: req.user.id
         });
 
@@ -49,12 +60,22 @@ exports.getTasks = async (req, res) => {
         // If not Admin/Manager, only see tasks assigned to me or in my projects
         // For simplicity in this demo, Team Members see all tasks in their projects.
 
-        // If not Admin/Manager, only see tasks assigned to me
-        if (req.user.role === 'Team Member') {
+        // RBAC: Check access
+        const isAdminOrManager = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        let tasksQuery;
+        if (isAdminOrManager) {
+            // Admin/Manager can see all tasks for the project (if projectId is provided)
+            tasksQuery = Task.find(queryObj);
+        } else {
+            // Team Members only see tasks assigned to them
             queryObj.assignedTo = req.user.id;
+            tasksQuery = Task.find(queryObj);
         }
 
-        const tasks = await Task.find(queryObj)
+        const tasks = await tasksQuery
             .populate('assignedTo', 'name email')
             .populate('project', 'name')
             .sort({ createdAt: -1 });
@@ -99,14 +120,27 @@ exports.updateTask = async (req, res) => {
     try {
         let task = await Task.findById(req.params.id);
 
-        if (!task) {
-            return res.status(404).json({ success: false, error: 'Task not found' });
-        }
+        const isAdminOrManager = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        const isOwner = task.assignedTo?.toString() === req.user.id || task.createdBy.toString() === req.user.id;
 
         // RBAC: Team Member can only update Status, Admin/Manager can update all
-        // Simplification: Allow update for now, refine logic later for field-level access
+        let updateData = req.body;
 
-        task = await Task.findByIdAndUpdate(req.params.id, req.body, {
+        if (!isAdminOrManager) {
+            if (!isOwner) {
+                return res.status(403).json({ success: false, error: 'Not authorized to update this task' });
+            }
+            // If they are a Team Member, only allow status updates
+            updateData = { status: req.body.status };
+            if (!req.body.status) {
+                return res.status(400).json({ success: false, error: 'Operations restricted: Employees can only modify task status telemetry.' });
+            }
+        }
+
+        task = await Task.findByIdAndUpdate(req.params.id, updateData, {
             new: true,
             runValidators: true
         });

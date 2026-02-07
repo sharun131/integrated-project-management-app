@@ -44,10 +44,12 @@ function App() {
 
               {/* Core Pages */}
               <Route path="dashboard" element={<DashboardDispatcher />} />
-              <Route path="projects" element={<Projects />} />
 
-              {/* Project Overview */}
-              <Route path="projects/:id" element={<ProjectOverview />} />
+              {/* Restricted Projects Access */}
+              <Route element={<ProtectedRoute allowedRoles={['Super Admin', 'Project Admin', 'Project Manager']} />}>
+                <Route path="projects" element={<Projects />} />
+                <Route path="projects/:id" element={<ProjectOverview />} />
+              </Route>
 
               <Route path="tasks" element={<Tasks />} />
               <Route path="milestones" element={<Milestones />} />

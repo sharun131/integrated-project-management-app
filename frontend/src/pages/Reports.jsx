@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import { Download, Loader } from 'lucide-react';
+import { Download, Loader, FolderKanban, CheckSquare, CheckCircle2, TrendingUp } from 'lucide-react';
 
 const Reports = () => {
     const { api } = useAuth();
@@ -46,13 +46,16 @@ const Reports = () => {
     }).sort((a, b) => b.tasks - a.tasks).slice(0, 5);
 
     const statusData = [
-        { name: 'Plan', value: tasks.filter(t => t.status === 'To Do').length },
+        { name: 'To Do', value: tasks.filter(t => t.status === 'To Do').length },
         { name: 'Active', value: tasks.filter(t => t.status === 'In Progress').length },
+        { name: 'Review', value: tasks.filter(t => t.status === 'In Review').length },
         { name: 'Final', value: tasks.filter(t => t.status === 'Completed').length },
+        { name: 'Blocked', value: tasks.filter(t => t.status === 'Blocked').length },
     ];
 
     const priorityData = [
         { name: 'Critical', value: tasks.filter(t => ['High', 'Critical'].includes(t.priority)).length, fill: '#6366f1' },
+        { name: 'Medium', value: tasks.filter(t => t.priority === 'Medium').length, fill: '#4f46e5' },
         { name: 'Stable', value: tasks.filter(t => t.priority === 'Low').length, fill: '#10b981' },
     ].filter(d => d.value > 0);
 
@@ -69,7 +72,7 @@ const Reports = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 animate-fade-in-up">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-white tracking-tight">Intelligence Hub</h1>
+                    <h1 className="text-3xl font-extrabold text-white tracking-tight">Reports</h1>
                     <p className="text-slate-500 font-medium mt-2 italic">Real-time analytical decryption and project telemetry</p>
                 </div>
                 <button className="btn btn-primary shadow-xl shadow-primary/20 animate-scale-in">
@@ -97,10 +100,10 @@ const Reports = () => {
 
             {/* Key Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in-up stagger-2">
-                <MetricCard label="Total Nodes" value={totalProjects} icon={<Download />} color="text-indigo-500" />
-                <MetricCard label="Active Operations" value={tasks.length} icon={<Download />} color="text-primary" />
-                <MetricCard label="Resolved Paths" value={completedTasks} icon={<Download />} color="text-success" />
-                <MetricCard label="Efficiency Rating" value={`${completionRate}%`} icon={<Download />} color="text-purple-500" />
+                <MetricCard label="Total Nodes" value={totalProjects} icon={<FolderKanban size={20} />} color="text-indigo-500" />
+                <MetricCard label="Active Operations" value={tasks.length} icon={<CheckSquare size={20} />} color="text-primary" />
+                <MetricCard label="Resolved Paths" value={completedTasks} icon={<CheckCircle2 size={20} />} color="text-success" />
+                <MetricCard label="Efficiency Rating" value={`${completionRate}%`} icon={<TrendingUp size={20} />} color="text-purple-500" />
             </div>
 
             {/* Charts */}
@@ -145,7 +148,16 @@ const Reports = () => {
                                     />
                                     <Bar dataKey="value" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={32}>
                                         {statusData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={index === 2 ? '#10b981' : (index === 1 ? '#4f46e5' : '#334155')} />
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={
+                                                    entry.name === 'Final' ? '#10b981' :
+                                                        entry.name === 'Active' ? '#4f46e5' :
+                                                            entry.name === 'Review' ? '#6366f1' :
+                                                                entry.name === 'Blocked' ? '#ef4444' :
+                                                                    '#334155'
+                                                }
+                                            />
                                         ))}
                                     </Bar>
                                 </BarChart>
@@ -202,9 +214,14 @@ const Reports = () => {
 };
 
 // Helper Components
-const MetricCard = ({ label, value, color }) => (
+const MetricCard = ({ label, value, color, icon }) => (
     <div className="glass-card p-6 border-white/5 group hover:border-primary/30 transition-all duration-500 shadow-xl shadow-black/20">
-        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-3 group-hover:text-slate-400 transition-colors">{label}</p>
+        <div className="flex items-center justify-between mb-3">
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] group-hover:text-slate-400 transition-colors uppercase">{label}</p>
+            <div className={`${color} opacity-40 group-hover:opacity-100 transition-opacity`}>
+                {icon}
+            </div>
+        </div>
         <h3 className={`text-4xl font-black ${color} group-hover:scale-105 transition-transform origin-left`}>{value}</h3>
     </div>
 );

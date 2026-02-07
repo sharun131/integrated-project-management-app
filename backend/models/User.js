@@ -44,7 +44,8 @@ const userSchema = new mongoose.Schema({
         enum: ['Active', 'Inactive'],
         default: 'Active'
     },
-    lastLogin: Date
+    lastLogin: Date,
+    currentSessionStart: Date
 }, {
     timestamps: true
 });

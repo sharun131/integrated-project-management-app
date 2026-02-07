@@ -13,6 +13,7 @@ import {
     Trash2,
     Pencil
 } from 'lucide-react';
+import Modal from './Modal';
 
 const TaskDetailsModal = ({ isOpen, onClose, taskId }) => {
     const { api, user } = useAuth();
@@ -117,6 +118,8 @@ const TaskDetailsModal = ({ isOpen, onClose, taskId }) => {
             console.error("Failed to upload file", err);
             alert("Failed to upload file. Please try again.");
             e.target.value = null; // Reset input
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -145,91 +148,85 @@ const TaskDetailsModal = ({ isOpen, onClose, taskId }) => {
         }
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 pt-24 pb-8 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col relative overflow-hidden">
-
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${task?.priority === 'High' ? 'bg-red-500' :
-                            task?.priority === 'Medium' ? 'bg-amber-500' : 'bg-green-500'
-                            }`} />
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{task?.project?.name}</span>
-                    </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
-                        <X size={20} />
-                    </button>
-                </div>
-
+        <Modal isOpen={isOpen} onClose={onClose} title={task?.project?.name || "Task Node"}>
+            <div className="flex flex-col h-[65vh]">
                 {loading ? (
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-500">
+                        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(79,70,229,0.3)]" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Synchronizing Telemetry...</p>
                     </div>
                 ) : (
                     <>
-                        {/* Tabs */}
-                        <div className="flex border-b border-gray-200 px-6">
+                        {/* Status Strip */}
+                        <div className="flex items-center gap-3 mb-6 shrink-0">
+                            <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor] ${task?.priority === 'High' ? 'text-red-500 bg-red-500' :
+                                task?.priority === 'Medium' ? 'text-amber-500 bg-amber-500' : 'text-green-500 bg-green-500'
+                                }`} />
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Priority Segment: {task?.priority}</span>
+                        </div>
+
+                        {/* Navigation Tabs */}
+                        <div className="flex gap-1 bg-white/5 p-1 rounded-xl mb-8 shrink-0 border border-white/5">
                             {['overview', 'comments', 'files'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === tab
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    className={`flex-1 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === tab
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                                        : 'text-slate-500 hover:text-white hover:bg-white/5'
                                         }`}
                                 >
-                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                                    {tab === 'comments' && task?.comments?.length > 0 &&
-                                        <span className="ml-2 bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">{task.comments.length}</span>
-                                    }
-                                    {tab === 'files' && task?.attachments?.length > 0 &&
-                                        <span className="ml-2 bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">{task.attachments.length}</span>
-                                    }
+                                    <div className="flex items-center justify-center gap-2">
+                                        {tab}
+                                        {tab === 'comments' && task?.comments?.length > 0 &&
+                                            <span className="bg-white/10 px-1.5 py-0.5 rounded text-[8px]">{task.comments.length}</span>
+                                        }
+                                        {tab === 'files' && task?.attachments?.length > 0 &&
+                                            <span className="bg-white/10 px-1.5 py-0.5 rounded text-[8px]">{task.attachments.length}</span>
+                                        }
+                                    </div>
                                 </button>
                             ))}
                         </div>
 
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6 bg-white">
-
+                        {/* Scrollable Content Area */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0">
                             {/* OVERVIEW TAB */}
                             {activeTab === 'overview' && (
-                                <div className="space-y-6">
+                                <div className="space-y-10 animate-fade-in-up">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{task?.title}</h2>
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${task?.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                        <h2 className="text-3xl font-black text-white mb-4 tracking-tighter leading-none">{task?.title}</h2>
+                                        <div className="flex flex-wrap gap-3 mb-8">
+                                            <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/10 shadow-sm ${task?.status === 'Completed' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'
                                                 }`}>
                                                 {task?.status}
                                             </span>
                                             {task?.dueDate && (
-                                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                    <Calendar size={12} />
-                                                    Due {new Date(task.dueDate).toLocaleDateString()}
+                                                <span className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white/5 text-slate-400 border border-white/10">
+                                                    <Calendar size={12} className="text-primary" />
+                                                    T-Minus {new Date(task.dueDate).toLocaleDateString()}
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-gray-600 whitespace-pre-wrap">{task?.description || "No description provided."}</p>
+                                        <p className="text-sm text-slate-400 leading-relaxed font-medium bg-white/5 p-4 rounded-xl border border-white/5">{task?.description || "No project documentation available for this node."}</p>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-6 pt-6 border-t border-gray-100">
-                                        <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Assigned To</label>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                                    <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/5">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Operational Agent</label>
+                                            <div className="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5 group">
+                                                <div className="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-black text-sm group-hover:bg-indigo-500 group-hover:text-white transition-all">
                                                     {task?.assignedTo?.name?.charAt(0) || 'U'}
                                                 </div>
-                                                <span className="text-sm font-medium text-gray-900">{task?.assignedTo?.name || "Unassigned"}</span>
+                                                <span className="text-xs font-bold text-white tracking-wide">{task?.assignedTo?.name || "Unassigned Unit"}</span>
                                             </div>
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Est. Hours</label>
-                                            <div className="flex items-center gap-2 mt-2 text-gray-900 font-medium">
-                                                <Clock size={16} className="text-gray-400" />
-                                                {task?.estimatedHours || 0} hrs
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Resource Estimate</label>
+                                            <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+                                                <Clock size={16} className="text-primary" />
+                                                <span className="text-xs font-bold text-white tracking-wide">{task?.estimatedHours || 0} Cycles (Hrs)</span>
                                             </div>
                                         </div>
                                     </div>
@@ -238,92 +235,95 @@ const TaskDetailsModal = ({ isOpen, onClose, taskId }) => {
 
                             {/* COMMENTS TAB */}
                             {activeTab === 'comments' && (
-                                <div className="flex flex-col h-full">
-                                    <div className="flex-1 space-y-4 mb-4">
+                                <div className="flex flex-col h-full animate-fade-in-up">
+                                    <div className="flex-1 space-y-6 mb-8 min-h-0 overflow-y-auto custom-scrollbar pr-2">
                                         {task?.comments?.length > 0 ? (
                                             task.comments.map((comment, idx) => (
-                                                <div key={idx} className="flex gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                                <div key={idx} className="flex gap-4 group">
+                                                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-slate-500 flex items-center justify-center font-black text-[10px] shrink-0 group-hover:border-primary/50 transition-colors">
                                                         {comment.user?.name?.charAt(0) || 'U'}
                                                     </div>
-                                                    <div className="bg-gray-50 rounded-lg p-3 w-full group relative">
-                                                        <div className="flex justify-between items-center mb-1">
-                                                            <div className="flex items-center">
-                                                                <span className="text-xs font-bold text-gray-900 mr-2">{comment.user?.name || "User"}</span>
+                                                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4 w-full relative group/comment">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-black text-white uppercase tracking-wider">{comment.user?.name || "Unknown Unit"}</span>
                                                                 {comment.user?._id === user?._id && !editingCommentId && (
-                                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <div className="flex items-center gap-2 opacity-0 group-hover/comment:opacity-100 transition-opacity">
                                                                         <button
                                                                             onClick={() => {
                                                                                 setEditingCommentId(comment._id);
                                                                                 setEditingText(comment.text);
                                                                             }}
-                                                                            className="text-gray-400 hover:text-blue-500 transition"
-                                                                            title="Edit comment"
+                                                                            className="text-slate-500 hover:text-primary transition"
                                                                         >
                                                                             <Pencil size={12} />
                                                                         </button>
                                                                         <button
                                                                             onClick={() => handleDeleteComment(comment._id)}
-                                                                            className="text-gray-400 hover:text-red-500 transition"
-                                                                            title="Delete comment"
+                                                                            className="text-slate-500 hover:text-red-500 transition"
                                                                         >
                                                                             <Trash2 size={12} />
                                                                         </button>
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleString()}</span>
+                                                            <span className="text-[9px] font-black text-slate-600 uppercase tracking-tighter">{new Date(comment.createdAt).toLocaleDateString()}</span>
                                                         </div>
                                                         {editingCommentId === comment._id ? (
-                                                            <div className="space-y-2">
+                                                            <div className="space-y-3">
                                                                 <textarea
-                                                                    className="w-full text-sm bg-white border border-gray-200 rounded p-2 focus:ring-1 focus:ring-blue-500 focus:outline-none text-gray-900"
+                                                                    className="w-full text-xs !bg-slate-900 border !border-white/10 rounded-xl p-3 focus:ring-1 focus:ring-primary/40 focus:outline-none text-white font-medium"
                                                                     value={editingText}
                                                                     onChange={(e) => setEditingText(e.target.value)}
                                                                     rows={2}
                                                                     autoFocus
                                                                 />
-                                                                <div className="flex justify-end gap-2">
+                                                                <div className="flex justify-end gap-3">
                                                                     <button
                                                                         onClick={() => setEditingCommentId(null)}
-                                                                        className="text-[10px] font-semibold text-gray-500 hover:text-gray-700"
+                                                                        className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors"
                                                                     >
-                                                                        Cancel
+                                                                        Abort
                                                                     </button>
                                                                     <button
                                                                         onClick={() => handleUpdateComment(comment._id)}
                                                                         disabled={isSubmitting || !editingText.trim()}
-                                                                        className="text-[10px] font-semibold text-white bg-blue-600 px-2 py-1 rounded hover:bg-blue-700 disabled:opacity-50"
+                                                                        className="text-[9px] font-black uppercase tracking-widest text-white bg-primary px-3 py-1.5 rounded-lg hover:bg-primary-dark disabled:opacity-50 transition-all shadow-lg shadow-primary/20"
                                                                     >
-                                                                        Save
+                                                                        Transmit
                                                                     </button>
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <p className="text-sm text-gray-700">{comment.text}</p>
+                                                            <p className="text-xs text-slate-300 font-medium leading-relaxed">{comment.text}</p>
                                                         )}
                                                     </div>
-
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="text-center py-8 text-gray-400 text-sm">No comments yet. Be the first!</div>
+                                            <div className="text-center py-12">
+                                                <MessageSquare size={32} className="text-slate-700 mx-auto mb-4 opacity-50" />
+                                                <p className="text-xs font-bold text-slate-600 uppercase tracking-widest italic">Communication channel silent.</p>
+                                            </div>
                                         )}
                                     </div>
+
+                                    {/* Footer Input Area */}
                                     {user?.role !== 'Super Admin' && (
-                                        <form onSubmit={handlePostComment} className="relative mt-auto">
+                                        <form onSubmit={handlePostComment} className="relative mt-auto shrink-0 animate-slide-up">
                                             <input
                                                 type="text"
-                                                placeholder="Write a comment..."
-                                                className="w-full pr-10 pl-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:outline-none text-gray-900"
+                                                placeholder="Enter data for transmission..."
+                                                className="w-full !pr-14 !pl-5 py-4 !bg-white/5 border border-white/10 !rounded-2xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary/40 focus:bg-white/10 transition-all placeholder-slate-500 font-bold"
                                                 value={commentText}
                                                 onChange={(e) => setCommentText(e.target.value)}
-                                            />           <button
+                                            />
+                                            <button
                                                 type="submit"
                                                 disabled={!commentText.trim() || isSubmitting}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-blue-600 hover:bg-blue-50 rounded-md disabled:opacity-50"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/30 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all"
                                             >
-                                                <Send size={18} />
+                                                <Send size={16} />
                                             </button>
                                         </form>
                                     )}
@@ -332,60 +332,67 @@ const TaskDetailsModal = ({ isOpen, onClose, taskId }) => {
 
                             {/* FILES TAB */}
                             {activeTab === 'files' && (
-                                <div>
+                                <div className="space-y-8 animate-fade-in-up">
                                     {user?.role !== 'Super Admin' && (
-                                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center mb-6 hover:border-blue-400 transition cursor-pointer relative group">
+                                        <div className="border-2 border-dashed border-white/5 bg-white/[0.02] rounded-2xl p-10 text-center hover:border-primary/50 hover:bg-white/[0.04] transition-all cursor-pointer relative group overflow-hidden">
                                             <input
                                                 type="file"
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50"
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                                 onChange={handleFileUpload}
                                                 disabled={isUploading}
                                             />
-                                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                                                {isUploading ? <div className="animate-spin border-2 border-current border-t-transparent rounded-full w-6 h-6" /> : <Paperclip size={24} />}
+                                            <div className="relative">
+                                                <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all shadow-[0_0_20px_rgba(79,70,229,0.1)]">
+                                                    {isUploading ? <Clock size={24} className="animate-spin" /> : <Paperclip size={28} />}
+                                                </div>
+                                                <p className="text-sm font-bold text-white mb-1 uppercase tracking-tight">{isUploading ? 'Encrypting Packet...' : 'Upload Telemetry'}</p>
+                                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">DRAG ASSETS HERE OR CLICK</p>
                                             </div>
-                                            <p className="text-sm font-medium text-gray-900">{isUploading ? 'Uploading...' : 'Click to upload or drag and drop'}</p>
-                                            <p className="text-xs text-gray-500 mt-1">SVG, PNG, JPG or PDF</p>
                                         </div>
                                     )}
 
-                                    <div className="space-y-3">
+                                    <div className="grid grid-cols-1 gap-3 pb-8">
                                         {task?.attachments?.map((file, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
+                                            <div key={idx} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all group">
+                                                <div className="flex items-center gap-4 min-w-0">
+                                                    <div className="w-12 h-12 bg-slate-800 text-slate-400 rounded-xl flex items-center justify-center border border-white/5 shrink-0 group-hover:text-primary transition-colors">
                                                         <FileText size={20} />
                                                     </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                                                        <p className="text-xs text-gray-500">Uploaded by {file.uploadedBy?.name || 'User'} on {new Date(file.uploadedAt).toLocaleDateString()}</p>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-bold text-white truncate pr-4">{file.name}</p>
+                                                        <p className="text-[9px] font-black text-slate-500 mt-1 uppercase tracking-tighter">
+                                                            Origin: {file.uploadedBy?.name || 'Unknown Unit'} • {new Date(file.uploadedAt).toLocaleDateString()}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-4">
-                                                    <a href={file.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs font-medium">Download</a>
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <a href={file.url} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-white/5 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/10 transition-all border border-white/5">
+                                                        Access
+                                                    </a>
                                                     <button
                                                         onClick={(e) => handleDeleteFile(file._id, e)}
-                                                        className="text-gray-400 hover:text-red-500 transition"
-                                                        title="Delete file"
+                                                        className="p-2 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
                                                     >
-                                                        <Trash2 size={16} />
+                                                        <Trash2 size={14} />
                                                     </button>
                                                 </div>
                                             </div>
                                         ))}
                                         {task?.attachments?.length === 0 && (
-                                            <div className="text-center text-gray-400 text-sm py-4">No files uploaded yet.</div>
+                                            <div className="text-center py-10 opacity-50">
+                                                <p className="text-xs font-black text-slate-700 uppercase tracking-widest italic">No external data linked.</p>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
                             )}
-
                         </div>
                     </>
                 )}
             </div>
-        </div>
+        </Modal>
     );
 };
 
 export default TaskDetailsModal;
+

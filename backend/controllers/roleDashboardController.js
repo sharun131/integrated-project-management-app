@@ -11,8 +11,16 @@ exports.getManagerStats = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // 1. Find Projects managed by this user
-        const projects = await Project.find({ manager: userId }).select('name status team');
+        // 1. Find Projects managed by this user (or all if Admin/Manager)
+        let projectQuery = { manager: userId };
+        const isAdminOrManager = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        if (isAdminOrManager) {
+            projectQuery = {}; // All projects
+        }
+        const projects = await Project.find(projectQuery).select('name status team');
         const projectIds = projects.map(p => p._id);
 
         // 2. Fetch Tasks for these projects
@@ -44,8 +52,8 @@ exports.getManagerStats = async (req, res) => {
 
         // B. Overdue Tasks
         const now = new Date();
-        const overdueTasks = tasks.filter(t => 
-            new Date(t.dueDate) < now && 
+        const overdueTasks = tasks.filter(t =>
+            new Date(t.dueDate) < now &&
             t.status !== 'Completed'
         ).slice(0, 5); // Top 5
 
@@ -65,7 +73,7 @@ exports.getManagerStats = async (req, res) => {
                 workloadMap[name]++;
             }
         });
-        
+
         const teamWorkload = Object.keys(workloadMap).map(key => ({
             name: key,
             tasks: workloadMap[key]
@@ -101,14 +109,14 @@ exports.getMemberStats = async (req, res) => {
             .populate('project', 'name');
 
         const now = new Date();
-        
+
         // 2. Deadlines (Next 7 days)
         const nextWeek = new Date();
         nextWeek.setDate(now.getDate() + 7);
 
-        const deadlines = tasks.filter(t => 
-            t.dueDate && 
-            new Date(t.dueDate) > now && 
+        const deadlines = tasks.filter(t =>
+            t.dueDate &&
+            new Date(t.dueDate) > now &&
             new Date(t.dueDate) <= nextWeek &&
             t.status !== 'Completed'
         );

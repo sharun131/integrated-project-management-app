@@ -13,9 +13,11 @@ import {
   XCircle,
   Download,
   Trash2,
-  UserPlus
+  UserPlus,
+  Plus
 } from 'lucide-react';
 import AssignTeamModal from '../components/AssignTeamModal';
+import ManageTaskModal from '../components/ManageTaskModal';
 
 const TABS = ['Overview', 'Tasks', 'Issues', 'Documents', 'Time'];
 
@@ -63,7 +65,7 @@ const ProjectOverview = () => {
     }
   };
 
-  const canManage = project && (user.role === 'Super Admin' || project.manager?._id === user.id || project.manager === user.id);
+  const canManage = project && (['Super Admin', 'Project Admin', 'Project Manager'].includes(user.role) || project.manager?._id === user.id || project.manager === user.id);
 
   if (loading) {
     return (
@@ -109,6 +111,17 @@ const ProjectOverview = () => {
             </h1>
             <p className="text-slate-500 font-medium mt-1">
               Project Control System <span className="mx-2 text-white/5">/</span> ID: {project._id.slice(-6).toUpperCase()}
+              {project.priority && (
+                <>
+                  <span className="mx-2 text-white/5">/</span>
+                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${project.priority === 'Critical' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                    project.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                      'bg-primary/10 text-primary border-primary/20'
+                    }`}>
+                    {project.priority} Priority
+                  </span>
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -228,6 +241,12 @@ const TasksTab = ({ projectId }) => {
   const { api } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const { user } = useAuth();
+  const isAdminOrPM = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+    role => role.toLowerCase() === user.role?.toLowerCase()
+  );
 
   useEffect(() => {
     fetchTasks();
@@ -245,30 +264,66 @@ const TasksTab = ({ projectId }) => {
   };
 
   if (loading) return <TabLoading text="Syncing project tasks…" />;
-  if (!tasks.length) return <EmptyState icon={<Briefcase size={32} />} text="No tasks registered for this coordinate" />;
 
   return (
-    <div className="glass-card overflow-hidden">
-      <div className="divide-y divide-white/5">
-        {tasks.map((task, idx) => (
-          <div key={task._id} className={`px-6 py-5 flex justify-between items-center gap-6 hover:bg-white/[0.02] transition-all group animate-fade-in-up stagger-${(idx % 4) + 1}`}>
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="group-hover:scale-110 transition-transform">
-                <StatusIcon status={task.status} />
+    <div className="space-y-6">
+      {isAdminOrPM && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/80 transition-all shadow-lg shadow-primary/20"
+          >
+            <Plus size={14} /> Initialize Task
+          </button>
+        </div>
+      )}
+
+      {tasks.length === 0 ? (
+        <EmptyState icon={<Briefcase size={32} />} text="No tasks registered for this coordinate" />
+      ) : (
+        <div className="glass-card overflow-hidden">
+          <div className="divide-y divide-white/5">
+            {tasks.map((task, idx) => (
+              <div
+                key={task._id}
+                onClick={() => setSelectedTask(task)}
+                className={`px-6 py-5 flex justify-between items-center gap-6 hover:bg-white/[0.02] transition-all group animate-fade-in-up stagger-${(idx % 4) + 1} cursor-pointer`}
+              >
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="group-hover:scale-110 transition-transform">
+                    <StatusIcon status={task.status} />
+                  </div>
+                  <p className="text-sm font-bold text-white group-hover:text-primary transition-colors truncate">
+                    {task.title}
+                  </p>
+                </div>
+                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter border ${task.status === 'Completed' ? 'bg-success/10 text-success border-success/20' :
+                  task.status === 'In Progress' ? 'bg-primary/10 text-primary border-primary/20' :
+                    'bg-white/5 text-slate-500 border-white/10'
+                  }`}>
+                  {task.status}
+                </span>
               </div>
-              <p className="text-sm font-bold text-white group-hover:text-primary transition-colors truncate">
-                {task.title}
-              </p>
-            </div>
-            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter border ${task.status === 'Completed' ? 'bg-success/10 text-success border-success/20' :
-              task.status === 'In Progress' ? 'bg-primary/10 text-primary border-primary/20' :
-                'bg-white/5 text-slate-500 border-white/10'
-              }`}>
-              {task.status}
-            </span>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {(showCreateModal || selectedTask) && (
+        <ManageTaskModal
+          isOpen={showCreateModal || !!selectedTask}
+          task={selectedTask}
+          onClose={() => {
+            setShowCreateModal(false);
+            setSelectedTask(null);
+          }}
+          onTaskUpdated={() => {
+            setShowCreateModal(false);
+            setSelectedTask(null);
+            fetchTasks();
+          }}
+        />
+      )}
     </div>
   );
 };

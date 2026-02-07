@@ -14,7 +14,8 @@ exports.getIssues = async (req, res) => {
         }
 
         // RBAC: If Team Member, only show issues from their projects
-        if (req.user.role === 'Team Member') {
+        const isTeamMember = req.user.role?.toLowerCase() === 'team member';
+        if (isTeamMember) {
             // Find projects where user is a team member
             const projects = await Project.find({ 'team.user': req.user.id });
             const projectIds = projects.map(p => p._id);
@@ -106,11 +107,19 @@ exports.deleteIssue = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Issue not found' });
         }
 
-        // Only Reporter or Admin/Manager can delete
+        // RBAC: Deny deletion for Admin roles as requested
+        const isAdmin = ['Super Admin', 'Project Admin'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        if (isAdmin) {
+            return res.status(403).json({ success: false, error: 'Admins are restricted from deleting issues' });
+        }
+
+        // Only Reporter or Manager can delete
         const project = await Project.findById(issue.project);
 
-        if (req.user.role !== 'Super Admin' &&
-            project.manager.toString() !== req.user.id &&
+        if (project.manager.toString() !== req.user.id &&
             issue.reportedBy.toString() !== req.user.id) {
             return res.status(403).json({ success: false, error: 'Not authorized to delete this issue' });
         }

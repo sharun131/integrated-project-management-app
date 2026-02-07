@@ -8,15 +8,14 @@ import {
   Circle,
   AlertCircle
 } from 'lucide-react';
-import CreateTaskModal from '../components/CreateTaskModal';
-import TaskDetailsModal from '../components/TaskDetailsModal';
+import ManageTaskModal from '../components/ManageTaskModal';
 import PageHeader from '../components/PageHeader';
 
 const Tasks = () => {
   const { user, api } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
 
@@ -69,7 +68,7 @@ const Tasks = () => {
   return (
     <div className="space-y-8 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-fade-in-up">
-        <PageHeader title="Workspace Tasks" subtitle="Collaborate and manage project deliverables" dark />
+        <PageHeader title="Project Operations" subtitle="Synchronized task telemetry and node management" dark />
         {api.defaults.headers.common['Authorization'] && /* Just a check, better use user role */
           null
         }
@@ -120,7 +119,7 @@ const Tasks = () => {
             filteredTasks.map((task, index) => (
               <div
                 key={task._id}
-                onClick={() => setSelectedTaskId(task._id)}
+                onClick={() => setSelectedTask(task)}
                 className={`px-6 py-5 flex items-center justify-between gap-6 hover:bg-white/[0.02] transition-all cursor-pointer group animate-fade-in-up stagger-${(index % 4) + 1}`}
               >
                 <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -169,23 +168,20 @@ const Tasks = () => {
         </div>
       </div>
 
-      {/* Helper Modals */}
-      {showModal && (
-        <CreateTaskModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          onTaskCreated={() => {
+      {/* Unified Management Modal */}
+      {(showModal || selectedTask) && (
+        <ManageTaskModal
+          isOpen={showModal || !!selectedTask}
+          task={selectedTask}
+          onClose={() => {
             setShowModal(false);
+            setSelectedTask(null);
+          }}
+          onTaskUpdated={() => {
+            setShowModal(false);
+            setSelectedTask(null);
             fetchTasks();
           }}
-        />
-      )}
-
-      {selectedTaskId && (
-        <TaskDetailsModal
-          isOpen={!!selectedTaskId}
-          taskId={selectedTaskId}
-          onClose={() => setSelectedTaskId(null)}
         />
       )}
     </div>

@@ -5,7 +5,7 @@ const Project = require('../models/Project');
 // @access  Private (Admin/Manager)
 exports.createProject = async (req, res) => {
     try {
-        const { name, description, startDate, endDate, team, status } = req.body;
+        const { name, description, startDate, endDate, team, status, priority } = req.body;
 
         const project = await Project.create({
             name,
@@ -13,6 +13,7 @@ exports.createProject = async (req, res) => {
             startDate,
             endDate,
             status, // Optional, defaults to Active
+            priority, // Optional, defaults to Medium
             team,   // Optional array of users
             manager: req.user.id, // Current user is manager by default (can be changed)
             createdBy: req.user.id
@@ -34,8 +35,13 @@ exports.getProjects = async (req, res) => {
     try {
         let query;
 
-        // RBAC: Super Admin gets all, others get assigned/managed projects
-        if (req.user.role === 'Super Admin') {
+        // RBAC: Super Admin, Project Admin, and Project Manager get all projects
+        const userRole = req.user.role;
+        const isAdminOrManager = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === userRole?.toLowerCase()
+        );
+
+        if (isAdminOrManager) {
             query = Project.find().populate('manager', 'name email').populate('team.user', 'name');
         } else {
             query = Project.find({
@@ -73,7 +79,11 @@ exports.getProject = async (req, res) => {
         }
 
         // RBAC: Check access
-        if (req.user.role !== 'Super Admin' &&
+        const isAdminOrManager = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        if (!isAdminOrManager &&
             project.manager.toString() !== req.user.id &&
             !project.team.some(member => member.user.toString() === req.user.id)) {
             return res.status(403).json({ success: false, error: 'Not authorized to view this project' });
@@ -100,7 +110,11 @@ exports.updateProject = async (req, res) => {
         }
 
         // RBAC Check
-        if (req.user.role !== 'Super Admin' && project.manager.toString() !== req.user.id) {
+        const isAdminOrManager = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        if (!isAdminOrManager && project.manager.toString() !== req.user.id) {
             return res.status(403).json({ success: false, error: 'Not authorized to update this project' });
         }
 
@@ -130,7 +144,11 @@ exports.deleteProject = async (req, res) => {
         }
 
         // RBAC Check
-        if (req.user.role !== 'Super Admin' && project.manager.toString() !== req.user.id) {
+        const isAdminOrManager = ['Super Admin', 'Project Admin', 'Project Manager'].some(
+            role => role.toLowerCase() === req.user.role?.toLowerCase()
+        );
+
+        if (!isAdminOrManager && project.manager.toString() !== req.user.id) {
             return res.status(403).json({ success: false, error: 'Not authorized to delete this project' });
         }
 
